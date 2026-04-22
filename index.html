@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Loan Repayment Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <div class="container">
+
+      <!-- Header -->
+      <header class="header">
+        <div class="header-eyebrow">Per-Loan Allocation</div>
+        <h1 class="header-title">Where Every Dollar Goes</h1>
+        <p id="header-sub" class="header-sub"></p>
+      </header>
+
+      <!-- Controls -->
+      <div class="controls-grid">
+
+        <div class="control-card">
+          <label class="control-label">Monthly Payment</label>
+          <div class="control-input-row">
+            <span class="control-prefix">$</span>
+            <input type="number" id="payment-input" class="num-input" min="300" max="5000" step="50">
+          </div>
+          <input type="range" id="payment-range" class="range-input" min="300" max="3000" step="50">
+        </div>
+
+        <div class="control-card control-card--bonus">
+          <label class="control-label control-label--bonus">Annual Bonus</label>
+          <div class="control-input-row">
+            <span class="control-prefix control-prefix--bonus">$</span>
+            <input type="number" id="bonus-input" class="num-input" min="0" max="20000" step="500">
+          </div>
+          <input type="range" id="bonus-range" class="range-input range-input--bonus" min="0" max="15000" step="500">
+          <div class="bonus-interval-row">
+            <span class="bonus-interval-label">Every</span>
+            <select id="bonus-interval" class="select-input">
+              <option value="6">6 months</option>
+              <option value="12">12 months</option>
+            </select>
+            <span class="bonus-interval-label">starting Mo 1</span>
+          </div>
+        </div>
+
+        <div class="control-card">
+          <label class="control-label">IDR Minimum</label>
+          <div class="control-input-row">
+            <span class="control-prefix">$</span>
+            <input type="number" id="idr-input" class="num-input" min="0" max="2000" step="10">
+          </div>
+          <input type="range" id="idr-range" class="range-input" min="100" max="1000" step="10">
+        </div>
+
+        <div class="control-card">
+          <label class="control-label">Viewing Month</label>
+          <div id="month-display" class="month-display"></div>
+          <input type="range" id="month-range" class="range-input" min="1" max="400" step="1">
+          <div id="quick-jumps" class="quick-jumps"></div>
+          <div class="quick-jumps-legend">★ payoff · $ bonus month</div>
+        </div>
+
+      </div>
+
+      <!-- Status Cards -->
+      <div id="status-cards" class="status-cards"></div>
+
+      <!-- Bonus Banner -->
+      <div id="bonus-banner"></div>
+
+      <!-- Allocation Bars Panel -->
+      <div id="allocation-bars" class="panel"></div>
+
+      <!-- Detailed Table Panel -->
+      <div id="allocation-table" class="panel"></div>
+
+      <!-- Milestones -->
+      <div id="milestones"></div>
+
+      <!-- Explainer -->
+      <div id="explainer" class="explainer-panel"></div>
+
+      <footer class="footer">
+        Based on Aidvantage statement 02/22/26 · Interest accrues on principal only, no capitalization during repayment · Not financial advice
+      </footer>
+
+    </div>
+  </div>
+
+  <script src="js/simulation.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
