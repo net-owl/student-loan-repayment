@@ -96,7 +96,58 @@ function simulateMonth(loanStates, totalPayment, idrMin) {
   return results;
 }
 
-function runSimulation(payment, idrMin, annualBonus, bonusInterval) {
+// Apply user-recorded actual per-loan payments for a single month.
+// Mirrors simulateMonth's accrual + interest-first/principal-next math, but
+// skips IDR distribution and avalanche allocation. Cap-at-balance handles
+// overpayment; unpaid interest carries forward in accruedInterest with no
+// monthly capitalization (matches federal Direct Loan rules, 34 CFR §685.211).
+function applyRecordedPayment(loanStates, recordedMap) {
+  const updated = loanStates.map(l => {
+    if (l.paidOff) return { ...l, monthlyAccrual: 0 };
+    const mi = l.currentPrincipal * (l.rate / 100) / 12;
+    return {
+      ...l,
+      accruedInterest: l.accruedInterest + mi,
+      currentBalance: l.currentPrincipal + l.accruedInterest + mi,
+      monthlyAccrual: mi,
+    };
+  });
+
+  return updated.map(l => {
+    const alloc = {
+      min: 0, extra: 0, bonus: 0, toInterest: 0, toPrincipal: 0,
+      monthlyAccrual: l.monthlyAccrual || 0,
+      recorded: true,
+    };
+    if (l.paidOff) return { ...l, alloc };
+
+    const requested = Math.max(0, Number(recordedMap[l.id]) || 0);
+    const pay = Math.min(requested, l.currentBalance);
+    const ip = Math.min(pay, l.accruedInterest);
+    const pp = pay - ip;
+
+    alloc.min = pay;
+    alloc.toInterest = ip;
+    alloc.toPrincipal = pp;
+
+    const newP = l.currentPrincipal - pp;
+    const newI = l.accruedInterest - ip;
+    const newB = newP + newI;
+    const done = newB < 0.01;
+
+    return {
+      ...l,
+      currentPrincipal: done ? 0 : newP,
+      accruedInterest:  done ? 0 : newI,
+      currentBalance:   done ? 0 : newB,
+      paidOff:          done,
+      paidOffMonth:     done ? (l.paidOffMonth || "this") : l.paidOffMonth,
+      alloc,
+    };
+  });
+}
+
+function runSimulation(payment, idrMin, annualBonus, bonusInterval, actualPayments = {}) {
   let states = INITIAL_LOANS.map(l => ({
     ...l,
     currentBalance:  l.balance,
@@ -110,10 +161,15 @@ function runSimulation(payment, idrMin, annualBonus, bonusInterval) {
   const months = [];
 
   for (let m = 1; m <= 400; m++) {
-    const isBonus = annualBonus > 0 && ((m - 1) % bonusInterval === 0);
-    const thisMonthTotal = payment + (isBonus ? annualBonus : 0);
+    const recorded = actualPayments[m];
+    const projectedIsBonus = annualBonus > 0 && ((m - 1) % bonusInterval === 0);
 
-    states = simulateMonth(states, thisMonthTotal, idrMin);
+    if (recorded) {
+      states = applyRecordedPayment(states, recorded);
+    } else {
+      const thisMonthTotal = payment + (projectedIsBonus ? annualBonus : 0);
+      states = simulateMonth(states, thisMonthTotal, idrMin);
+    }
     const activeCount = states.filter(l => !l.paidOff).length;
 
     // Stamp payoff month
@@ -123,8 +179,8 @@ function runSimulation(payment, idrMin, annualBonus, bonusInterval) {
       return l;
     });
 
-    // Attribute bonus portion within alloc.extra for display
-    if (isBonus) {
+    // Attribute bonus portion within alloc.extra for display (skip on recorded months)
+    if (!recorded && projectedIsBonus) {
       const extraTotal = states.reduce((s, l) => s + (l.alloc ? l.alloc.extra : 0), 0);
       let bonusRemaining = Math.min(annualBonus, extraTotal);
       const activeSorted = [...states]
@@ -142,7 +198,8 @@ function runSimulation(payment, idrMin, annualBonus, bonusInterval) {
       month: m,
       loans: states.map(l => ({ ...l, alloc: { ...l.alloc } })),
       activeCount,
-      isBonus,
+      isBonus: recorded ? false : projectedIsBonus,
+      recorded: !!recorded,
     });
 
     if (activeCount === 0) break;

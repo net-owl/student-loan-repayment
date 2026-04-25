@@ -63,7 +63,7 @@
           <div id="month-display" class="month-display"></div>
           <input type="range" id="month-range" class="range-input" min="1" max="400" step="1">
           <div id="quick-jumps" class="quick-jumps"></div>
-          <div class="quick-jumps-legend">★ payoff · $ bonus month</div>
+          <div class="quick-jumps-legend">★ payoff · $ bonus · ✓ recorded</div>
         </div>
 
       </div>
@@ -77,6 +77,9 @@
       <!-- Allocation Bars Panel -->
       <div id="allocation-bars" class="panel"></div>
 
+      <!-- Payment Recorder Panel -->
+      <div id="payment-recorder" class="panel recorder-panel"></div>
+
       <!-- Detailed Table Panel -->
       <div id="allocation-table" class="panel"></div>
 
@@ -85,6 +88,15 @@
 
       <!-- Explainer -->
       <div id="explainer" class="explainer-panel"></div>
+
+      <!-- Data tools (export/import recorded payments) -->
+      <div id="data-tools" class="data-tools">
+        <span class="data-tools-label">Recorded payments:</span>
+        <button id="export-actuals" class="btn-secondary" type="button">Export JSON</button>
+        <button id="import-actuals" class="btn-secondary" type="button">Import…</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+        <span id="data-tools-status" class="data-tools-status"></span>
+      </div>
 
       <footer class="footer">
         Based on Aidvantage statement 02/22/26 · Interest accrues on principal only, no capitalization during repayment · Not financial advice

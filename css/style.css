@@ -615,6 +615,236 @@ tfoot tr {
   margin-bottom: 4px;
 }
 
+/* ── Payment Recorder ── */
+
+.recorder-panel {
+  margin-bottom: 18px;
+}
+
+.recorder-future {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-style: italic;
+  padding: 8px 4px 2px;
+}
+
+.recorder-help {
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border-dim);
+  margin-bottom: 12px;
+}
+
+.recorder-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.recorder-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 130px minmax(180px, 1.4fr);
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+}
+
+.recorder-row--paidoff {
+  opacity: 0.45;
+}
+
+.recorder-loan {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-mono);
+}
+
+.recorder-loan-id {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.recorder-loan-meta {
+  font-size: 8px;
+  color: var(--text-dimmer);
+  letter-spacing: 0.5px;
+}
+
+.recorder-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 5px 8px;
+  color: var(--text-bright);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.recorder-input:focus {
+  outline: none;
+  border-color: var(--green);
+}
+
+.recorder-input[disabled] {
+  color: var(--text-faint);
+  background: var(--bg-panel);
+  cursor: not-allowed;
+}
+
+.recorder-sub {
+  font-size: 9px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.recorder-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.recorder-status {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  background: var(--bg-dark);
+}
+
+.recorder-status--warn {
+  color: var(--amber);
+  background: rgba(246, 173, 85, 0.08);
+  border: 1px solid rgba(246, 173, 85, 0.25);
+}
+
+.recorded-badge {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  color: var(--green);
+  background: rgba(104, 211, 145, 0.13);
+  border: 1px solid rgba(104, 211, 145, 0.3);
+}
+
+.badge-recorded {
+  color: var(--green);
+  background: rgba(104, 211, 145, 0.13);
+}
+
+.month-num.recorded-color {
+  color: var(--green);
+}
+
+/* Buttons */
+
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 7px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.btn-primary {
+  background: rgba(104, 211, 145, 0.18);
+  border-color: rgba(104, 211, 145, 0.45);
+  color: var(--green);
+}
+.btn-primary:hover {
+  background: rgba(104, 211, 145, 0.28);
+  border-color: var(--green);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-dim);
+}
+.btn-secondary:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--red);
+  border-color: rgba(252, 129, 129, 0.35);
+}
+.btn-danger:hover {
+  background: rgba(252, 129, 129, 0.1);
+  border-color: var(--red);
+}
+
+/* Recorded row in detail table */
+.row-recorded {
+  background: rgba(104, 211, 145, 0.06);
+  box-shadow: inset 2px 0 0 var(--green);
+}
+
+/* Recorded marker on quick-jump buttons */
+.jump-btn.is-recorded {
+  border-color: rgba(104, 211, 145, 0.45);
+  color: var(--green);
+}
+
+/* Recorded marker on milestone buttons */
+.milestone-btn.is-recorded {
+  border-color: rgba(104, 211, 145, 0.45);
+}
+
+/* ── Data tools (export / import) ── */
+
+.data-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+}
+
+.data-tools-label {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+
+.data-tools-status {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  margin-left: auto;
+}
+
+.data-tools-status--ok  { color: var(--green); }
+.data-tools-status--err { color: var(--red); }
+
 /* ── Footer ── */
 
 .footer {
