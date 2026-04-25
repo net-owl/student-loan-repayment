@@ -72,6 +72,14 @@ const eid = id => document.getElementById(id);
 document.addEventListener("DOMContentLoaded", () => {
   loadActuals();
 
+  // Default to the most recent recorded month so the page opens from the
+  // latest "paid through" perspective. Falls back to Mo 1 when nothing's
+  // been recorded yet.
+  const recordedMonths = Object.keys(state.actualPayments).map(Number);
+  if (recordedMonths.length > 0) {
+    state.viewMonth = Math.max(...recordedMonths);
+  }
+
   eid("payment-input").value  = state.payment;
   eid("payment-range").value  = state.payment;
   eid("idr-input").value      = state.idrMin;
