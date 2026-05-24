@@ -167,10 +167,12 @@ function getCurrentData() {
   const isBonus  = mo.isBonus;
   const recorded = !!mo.recorded;
 
+  // Fixed row order across all months: rate desc, then id for a stable
+  // tiebreak. Paid-off loans stay in place (not sunk) so the same loan
+  // occupies the same row every month and can be compared across the timeline.
   const sorted = [...mo.loans].sort((a, b) => {
-    if (a.paidOff && !b.paidOff) return 1;
-    if (!a.paidOff && b.paidOff) return -1;
-    return b.rate - a.rate;
+    if (b.rate !== a.rate) return b.rate - a.rate;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });
 
   const active  = sorted.filter(l => !l.paidOff);
@@ -217,7 +219,9 @@ function renderMonthView() {
 
   renderQuickJumps(safeView, max);
   renderStatusCards(active, paidOff, totals, isBonus, thisMonthPayment, recorded);
+  renderBalanceWaterfall(safeView, totals);
   renderBonusBanner(isBonus, thisMonthPayment);
+  renderBalanceChart(safeView);
   renderAllocationBars(sorted, thisMonthPayment, safeView, isBonus, recorded);
   renderPaymentRecorder(d);
   renderTable(sorted, totals, safeView, isBonus, thisMonthPayment, recorded);
@@ -365,6 +369,115 @@ function renderBonusBanner(isBonus, thisMonthPayment) {
       </div>
     </div>
   `;
+}
+
+// ── Per-month balance waterfall ─────────────────────────────────────────────
+// Makes the carry-forward explicit: Beginning (= prior month's ending) plus the
+// interest that accrued, minus what was paid, equals this month's Ending. The
+// balance can only rise by accrued interest, never spontaneously — this is what
+// dispels the "ending higher than next beginning" misread.
+
+function renderBalanceWaterfall(safeView, totals) {
+  const el = eid("balance-waterfall");
+  if (!el) return;
+
+  const paid      = totals.toInterest + totals.toPrincipal;
+  const ending    = totals.balance;
+  const beginning = ending + paid - totals.accrual; // == prior month's ending
+
+  el.className = "panel waterfall-panel";
+  el.innerHTML = `
+    <div class="panel-header">
+      <span class="panel-title">Portfolio Balance · Month ${safeView}</span>
+      <span class="panel-sub">Beginning = prior month's ending</span>
+    </div>
+    <div class="waterfall">
+      <div class="wf-step">
+        <div class="wf-label">Beginning</div>
+        <div class="wf-value">${fmt(beginning)}</div>
+      </div>
+      <div class="wf-op color-red">+</div>
+      <div class="wf-step">
+        <div class="wf-label">Interest accrued</div>
+        <div class="wf-value color-red">${fmt(totals.accrual)}</div>
+      </div>
+      <div class="wf-op color-green">−</div>
+      <div class="wf-step">
+        <div class="wf-label">Paid this month</div>
+        <div class="wf-value color-green">${fmt(paid)}</div>
+      </div>
+      <div class="wf-op">=</div>
+      <div class="wf-step wf-step--end">
+        <div class="wf-label">Ending</div>
+        <div class="wf-value">${fmt(ending)}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Balance trajectory chart ────────────────────────────────────────────────
+// Inline SVG (no dependency) plotting total balance across the whole schedule,
+// so the monotonic decline is visible at a glance. Click to jump to a month.
+
+function renderBalanceChart(safeView) {
+  const el = eid("balance-chart");
+  if (!el) return;
+
+  const sim = state.fullSim || [];
+  const n = sim.length;
+  if (n < 2) { el.innerHTML = ""; el.className = ""; return; }
+
+  const series = sim.map(mo =>
+    mo.loans.reduce((s, l) => s + (l.paidOff ? 0 : l.currentBalance), 0)
+  );
+
+  const W = 1000, H = 150, padX = 28, padT = 14, padB = 22;
+  const plotW = W - padX * 2;
+  const plotH = H - padT - padB;
+  const maxBal = TOTAL_BALANCE || Math.max(...series, 1);
+
+  const xAt = i => padX + (n === 1 ? 0 : (i / (n - 1)) * plotW);
+  const yAt = v => padT + (1 - v / maxBal) * plotH;
+
+  const pts = series.map((v, i) => `${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(" ");
+  const areaPts = `${padX},${(padT + plotH).toFixed(1)} ${pts} ${(padX + plotW).toFixed(1)},${(padT + plotH).toFixed(1)}`;
+
+  const milestones = getMilestones(sim);
+  const milestoneDots = milestones.map(m => {
+    const i = m.month - 1;
+    if (i < 0 || i >= n) return "";
+    return `<circle cx="${xAt(i).toFixed(1)}" cy="${yAt(series[i]).toFixed(1)}" r="2.5" fill="var(--amber)" />`;
+  }).join("");
+
+  const curIdx = Math.min(Math.max(safeView - 1, 0), n - 1);
+  const cx = xAt(curIdx), cy = yAt(series[curIdx]);
+
+  el.className = "panel balance-chart";
+  el.innerHTML = `
+    <div class="panel-header">
+      <span class="panel-title">Balance Trajectory</span>
+      <span class="panel-sub">${n} months · ${fmt(series[0])} → ${fmt(series[n - 1])}</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Total balance over time">
+      <line class="chart-baseline" x1="${padX}" y1="${padT + plotH}" x2="${padX + plotW}" y2="${padT + plotH}" />
+      <polygon class="chart-area" points="${areaPts}" />
+      <polyline class="chart-line" points="${pts}" />
+      <line class="chart-cursor" x1="${cx.toFixed(1)}" y1="${padT}" x2="${cx.toFixed(1)}" y2="${(padT + plotH).toFixed(1)}" />
+      ${milestoneDots}
+      <circle class="chart-cursor-dot" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4" />
+    </svg>
+  `;
+
+  const svg = el.querySelector("svg");
+  svg.addEventListener("click", (e) => {
+    const rect = svg.getBoundingClientRect();
+    const frac = (e.clientX - rect.left) / rect.width;
+    const inner = (frac * W - padX) / plotW;
+    const month = Math.min(Math.max(Math.round(inner * (n - 1)) + 1, 1), n);
+    state.viewMonth = month;
+    eid("month-range").value = month;
+    renderMonthView();
+  });
 }
 
 // ── Allocation bar chart ─────────────────────────────────────────────────────
@@ -795,8 +908,9 @@ function renderTable(sorted, totals, safeView, isBonus, thisMonthPayment, record
           ${isPaidOff ? "✓" : idx + 1}
         </td>
         <td class="left">
-          <span style="font-weight:600;color:${idColor};font-size:11px">${loan.id}${justPaid ? " ★" : ""}</span>
+          <span style="font-weight:600;color:${idColor};font-size:11px">${loan.id}${loan.paidOff ? " ✓" : ""}</span>
           <span style="font-size:7px;color:var(--text-dimmer);margin-left:3px">${loan.program}</span>
+          ${justPaid ? '<span class="badge badge-paid">PAID OFF</span>' : ""}
         </td>
         <td style="font-weight:600;color:${rateColor}">${loan.rate.toFixed(3)}%</td>
         <td style="color:var(--text-dim)">${isPaidOff ? "—" : fmt(preBal)}</td>
