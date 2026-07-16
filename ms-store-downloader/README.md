@@ -17,7 +17,25 @@ specification). No third-party download services are involved.
 Download-StoreApp.ps1  ──►  app folder  ──►  Install-StoreApp.ps1
                             (bundle + deps
                              + manifest.json)
+
+[machine with internet, e.g. during image build]
+Update-StoreApp.ps1  =  check for update ──► download ──► install, in one step
 ```
+
+## Accepted package identifiers
+
+Every script's `-PackageName` accepts any of these forms:
+
+| Form | Example | Where it comes from |
+|---|---|---|
+| Store ID | `9WZDNCRFJ3PZ` | Store URL: `apps.microsoft.com/detail/<StoreId>` |
+| PackageFamilyName | `Microsoft.CompanyPortal_8wekyb3d8bbwe` | `Get-AppxPackage` → `PackageFamilyName` |
+| Full package name | `Microsoft.CompanyPortal_11.2.183.0_neutral_~_8wekyb3d8bbwe` | `Get-AppxProvisionedPackage -Online` → `PackageName` |
+| Identity name | `Microsoft.CompanyPortal` (wildcards OK) | `Get-AppxProvisionedPackage` → `DisplayName`, `Get-AppxPackage` → `Name` |
+
+The identity-name form is resolved against the local machine's installed/provisioned
+apps, so it only works where the app is already present; the other three forms work
+anywhere.
 
 ## 1. Download (any Windows machine with internet)
 
@@ -34,12 +52,12 @@ Download-StoreApp.ps1  ──►  app folder  ──►  Install-StoreApp.ps1
 
 | Parameter | Default | Notes |
 |---|---|---|
-| `-PackageName` | *(required)* | Store ID (`9…`, 12 chars) or PackageFamilyName (`Name_hash`) |
+| `-PackageName` | *(required)* | See "Accepted package identifiers" above |
 | `-Destination` | `.\<AppName>` | Output folder |
 | `-Architecture` | `x64` | `x64`, `x86`, `arm64` or `all`; neutral packages always included |
 | `-Market` / `-Locale` | `US` / `en-US` | Catalog market/language |
 | `-Ring` | `Retail` | Release ring (`Retail`, `RP`, `WIS`, `WIF`) |
-| `-ListOnly` | off | Resolve and list packages without downloading |
+| `-ListOnly` | off | Resolve and list packages without downloading; emits an object with the latest available version |
 
 The output folder contains the app bundle, its dependency packages, and a
 `manifest.json` recording which file is the app and which are dependencies.
@@ -75,6 +93,39 @@ You normally do **not** need to remove it first:
   (re-provisioning would fail with `0x80073D06`-style "higher version installed" errors).
 - **Downgrade or broken/staged install** → use `-Force`, which removes the provisioned
   package and all per-user registrations before installing.
+
+## 3. Check + download + install in one step (elevated, needs internet)
+
+`Update-StoreApp.ps1` chains the two scripts: it asks the Store for the latest version,
+compares it with what the machine already has (provisioned and per-user), and only if
+the Store version is newer (or the app is missing) downloads to a staging folder and
+provisions it.
+
+```powershell
+# Update one app if the Store has a newer version (identity name resolved locally)
+.\Update-StoreApp.ps1 -PackageName Microsoft.CompanyPortal
+
+# Just report what would be updated - no downloads, no changes
+.\Update-StoreApp.ps1 -PackageName 9WZDNCRFJ3PZ, Microsoft.WindowsTerminal_8wekyb3d8bbwe -CheckOnly
+
+# Update every Store app currently provisioned in the image
+Get-AppxProvisionedPackage -Online |
+    ForEach-Object { .\Update-StoreApp.ps1 -PackageName $_.PackageName }
+```
+
+| Parameter | Default | Notes |
+|---|---|---|
+| `-PackageName` | *(required)* | One or more identifiers (see table above) |
+| `-CheckOnly` | off | Report installed vs. available versions only |
+| `-Force` | off | Reinstall even if the machine is already current (removes existing copies first) |
+| `-CurrentUser` | off | Per-user install instead of machine-wide provisioning |
+| `-StagingPath` | `<temp>\StoreAppUpdates` | Where downloads are staged |
+| `-KeepFiles` | off | Keep the staged packages after installing |
+| `-Architecture` / `-Market` / `-Locale` / `-Ring` | as downloader | Passed through to the download step |
+
+Each app yields a result object (`Status`: `UpToDate`, `UpdateAvailable`, `Updated`,
+`Installed` or `Failed`) so the script is easy to drive from automation; it exits `1`
+if any app failed.
 
 ## Caveats
 

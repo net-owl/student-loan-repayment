@@ -20,9 +20,14 @@
     line-of-business apps are served encrypted and cannot be captured this way.
 
 .PARAMETER PackageName
-    The app to download. Accepts either:
+    The app to download. Accepts any of:
       - a Store ID, e.g. 9WZDNCRFJ3PZ  (from the Store URL: apps.microsoft.com/detail/<StoreId>)
       - a PackageFamilyName, e.g. Microsoft.CompanyPortal_8wekyb3d8bbwe  (from Get-AppxPackage)
+      - a full package name, e.g. Microsoft.CompanyPortal_11.2.183.0_neutral_~_8wekyb3d8bbwe
+        (the PackageName property of Get-AppxProvisionedPackage / Get-AppxPackage)
+      - a package identity name, e.g. Microsoft.CompanyPortal (the DisplayName shown by
+        Get-AppxProvisionedPackage). Wildcards allowed. Resolved against this machine's
+        installed/provisioned apps, so this form only works where the app is present.
 
 .PARAMETER Destination
     Folder to download into. Defaults to .\<PackageIdentityName>. Created if missing.
@@ -42,6 +47,8 @@
 
 .PARAMETER ListOnly
     Resolve and list the packages that would be downloaded, without downloading anything.
+    Emits an object with the app's identity and the latest available version, consumed by
+    Update-StoreApp.ps1 for its update check.
 
 .EXAMPLE
     .\Download-StoreApp.ps1 -PackageName 9WZDNCRFJ3PZ
@@ -160,22 +167,68 @@ $BodyXml
     return [xml]$response.Content
 }
 
+function Convert-ToPackageFamilyName {
+    # Normalizes an identifier to a PackageFamilyName. Accepts a PackageFamilyName as-is,
+    # derives one from a full package name (Name_Version_Arch_ResourceId_PublisherHash,
+    # as shown by Get-AppxProvisionedPackage/Get-AppxPackage), or resolves a bare identity
+    # name against this machine's installed/provisioned apps. Returns $null if unresolvable.
+    param([Parameter(Mandatory)][string]$Identifier)
+
+    if ($Identifier -match '^[^_]+_[a-z0-9]{13}$') { return $Identifier }
+
+    $parts = $Identifier -split '_'
+    if ($parts.Count -ge 4 -and $parts[1] -match '^\d+(\.\d+){1,3}$' -and $parts[-1] -match '^[a-z0-9]{13}$') {
+        return '{0}_{1}' -f $parts[0], $parts[-1]
+    }
+
+    # Bare identity name (e.g. Microsoft.CompanyPortal): look it up locally
+    if (Get-Command Get-AppxPackage -ErrorAction SilentlyContinue) {
+        $found = @()
+        try { $found = @(Get-AppxPackage -AllUsers -Name $Identifier -ErrorAction Stop) }
+        catch {
+            try { $found = @(Get-AppxPackage -Name $Identifier -ErrorAction Stop) } catch { }
+        }
+        $familyNames = @($found | ForEach-Object { $_.PackageFamilyName } | Sort-Object -Unique)
+        if ($familyNames.Count -eq 1) { return $familyNames[0] }
+        if ($familyNames.Count -gt 1) {
+            throw "'$Identifier' matches more than one installed package: $($familyNames -join ', '). Use one of those PackageFamilyNames."
+        }
+    }
+    if (Get-Command Get-AppxProvisionedPackage -ErrorAction SilentlyContinue) {
+        $provisioned = @()
+        try { $provisioned = @(Get-AppxProvisionedPackage -Online -ErrorAction Stop | Where-Object { $_.DisplayName -like $Identifier }) } catch { }
+        $familyNames = @($provisioned | ForEach-Object {
+            $p = $_.PackageName -split '_'
+            '{0}_{1}' -f $p[0], $p[-1]
+        } | Sort-Object -Unique)
+        if ($familyNames.Count -eq 1) { return $familyNames[0] }
+        if ($familyNames.Count -gt 1) {
+            throw "'$Identifier' matches more than one provisioned package: $($familyNames -join ', '). Use one of those PackageFamilyNames."
+        }
+    }
+    return $null
+}
+
 function Resolve-StoreProduct {
     param(
         [Parameter(Mandatory)][string]$Identifier,
         [Parameter(Mandatory)][string]$Market,
         [Parameter(Mandatory)][string]$Locale
     )
-    # Store IDs are 12 alphanumeric characters starting with 9; anything with an
-    # underscore is treated as a PackageFamilyName.
+    # Store IDs are 12 alphanumeric characters starting with 9; everything else is
+    # normalized to a PackageFamilyName.
     if ($Identifier -match '^9[A-Za-z0-9]{11}$') {
         $uri = "https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=$Identifier&market=$Market&languages=$Locale,neutral"
     }
-    elseif ($Identifier -match '^[^_]+_[a-z0-9]{13}$') {
-        $uri = "https://displaycatalog.mp.microsoft.com/v7.0/products/lookup?market=$Market&languages=$Locale,neutral&alternateId=PackageFamilyName&value=$Identifier"
-    }
     else {
-        throw "Unrecognized package identifier '$Identifier'. Provide a Store ID (e.g. 9WZDNCRFJ3PZ, from the app's Store URL) or a PackageFamilyName (e.g. Microsoft.CompanyPortal_8wekyb3d8bbwe, from Get-AppxPackage)."
+        $familyName = Convert-ToPackageFamilyName -Identifier $Identifier
+        if (-not $familyName) {
+            throw "Could not resolve package identifier '$Identifier'. Provide a Store ID (e.g. 9WZDNCRFJ3PZ, from the app's Store URL), a PackageFamilyName (e.g. Microsoft.CompanyPortal_8wekyb3d8bbwe), a full package name (from Get-AppxProvisionedPackage), or - on a machine where the app is installed or provisioned - its identity name (e.g. Microsoft.CompanyPortal)."
+        }
+        if ($familyName -ne $Identifier) {
+            Write-Host "  Resolved '$Identifier' to PackageFamilyName '$familyName'"
+        }
+        $uri = "https://displaycatalog.mp.microsoft.com/v7.0/products/lookup?market=$Market&languages=$Locale,neutral&alternateId=PackageFamilyName&value=$familyName"
     }
 
     Write-Verbose "DisplayCatalog: $uri"
@@ -456,6 +509,12 @@ if ($mainPackages.Count -eq 0) {
     Write-Warning "Could not identify the main app package by name '$mainName'; treating every downloaded package as a dependency. Review the output folder manually."
 }
 
+$availableVersion = $null
+foreach ($pkg in $mainPackages) {
+    try { $v = [version]$pkg.Version } catch { continue }
+    if (-not $availableVersion -or $v -gt $availableVersion) { $availableVersion = $v }
+}
+
 Write-Host ''
 Write-Host ("Packages selected ({0} of {1} returned):" -f $selected.Count, $allPackages.Count) -ForegroundColor Cyan
 foreach ($pkg in ($selected | Sort-Object PackageName)) {
@@ -466,7 +525,14 @@ foreach ($pkg in ($selected | Sort-Object PackageName)) {
 
 if ($ListOnly) {
     Write-Host "`n-ListOnly specified; nothing downloaded." -ForegroundColor Yellow
-    return
+    return [pscustomobject]@{
+        Title               = $product.Title
+        StoreId             = $product.StoreId
+        PackageFamilyName   = $product.PackageFamilyName
+        PackageIdentityName = $product.PackageIdentityName
+        AvailableVersion    = $availableVersion
+        Packages            = $selected
+    }
 }
 
 if (-not $Destination) {
