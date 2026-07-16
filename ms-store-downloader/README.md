@@ -129,15 +129,19 @@ if any app failed.
 
 ## Starter manifest: popular first-party apps
 
-`first-party-apps.json` is a curated starting list of Microsoft first-party Store apps
+`first-party-apps.yaml` is a curated starting list of Microsoft first-party Store apps
 that commonly need version pinning in VDI images — Snipping Tool, To Do, Whiteboard,
 Company Portal, Notepad, Calculator, Paint, Photos, Sticky Notes, Windows Terminal,
 Clock, Media Player, Camera, App Installer (winget), Quick Assist, new Outlook, and new
 Teams. Each entry carries both the `storeId` and the `packageFamilyName` (either works
 as `-PackageName`), plus notes. Prune or extend it for your environment.
 
+PowerShell has no built-in YAML parser, so reading it needs the
+[powershell-yaml](https://www.powershellgallery.com/packages/powershell-yaml) module
+(one-time: `Install-Module powershell-yaml -Scope CurrentUser`).
+
 ```powershell
-$manifest = Get-Content .\first-party-apps.json -Raw | ConvertFrom-Json
+$manifest = Get-Content .\first-party-apps.yaml -Raw | ConvertFrom-Yaml
 
 # Capture every app in the list (run wherever you stage installers)
 foreach ($app in $manifest.apps) {
