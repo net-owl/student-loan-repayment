@@ -21,7 +21,8 @@
 
 .PARAMETER PackageName
     The app to download. Accepts any of:
-      - a Store ID, e.g. 9WZDNCRFJ3PZ  (from the Store URL: apps.microsoft.com/detail/<StoreId>)
+      - a Store ID, e.g. 9WZDNCRFJ3PZ or XP8BT8DW290MPQ
+        (from the Store URL: apps.microsoft.com/detail/<StoreId>)
       - a PackageFamilyName, e.g. Microsoft.CompanyPortal_8wekyb3d8bbwe  (from Get-AppxPackage)
       - a full package name, e.g. Microsoft.CompanyPortal_11.2.183.0_neutral_~_8wekyb3d8bbwe
         (the PackageName property of Get-AppxProvisionedPackage / Get-AppxPackage)
@@ -215,9 +216,10 @@ function Resolve-StoreProduct {
         [Parameter(Mandatory)][string]$Market,
         [Parameter(Mandatory)][string]$Locale
     )
-    # Store IDs are 12 alphanumeric characters starting with 9; everything else is
-    # normalized to a PackageFamilyName.
-    if ($Identifier -match '^9[A-Za-z0-9]{11}$') {
+    # Store IDs are 12 alphanumerics starting with 9, or the newer 14-character
+    # XP-prefixed form (e.g. new Teams); everything else is normalized to a
+    # PackageFamilyName.
+    if ($Identifier -match '^(9[A-Za-z0-9]{11}|XP[A-Za-z0-9]{12})$') {
         $uri = "https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=$Identifier&market=$Market&languages=$Locale,neutral"
     }
     else {

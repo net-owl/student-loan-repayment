@@ -127,6 +127,36 @@ Each app yields a result object (`Status`: `UpToDate`, `UpdateAvailable`, `Updat
 `Installed` or `Failed`) so the script is easy to drive from automation; it exits `1`
 if any app failed.
 
+## Starter manifest: popular first-party apps
+
+`first-party-apps.json` is a curated starting list of Microsoft first-party Store apps
+that commonly need version pinning in VDI images — Snipping Tool, To Do, Whiteboard,
+Company Portal, Notepad, Calculator, Paint, Photos, Sticky Notes, Windows Terminal,
+Clock, Media Player, Camera, App Installer (winget), Quick Assist, new Outlook, and new
+Teams. Each entry carries both the `storeId` and the `packageFamilyName` (either works
+as `-PackageName`), plus notes. Prune or extend it for your environment.
+
+```powershell
+$manifest = Get-Content .\first-party-apps.json -Raw | ConvertFrom-Json
+
+# Capture every app in the list (run wherever you stage installers)
+foreach ($app in $manifest.apps) {
+    .\Download-StoreApp.ps1 -PackageName $app.storeId -Destination "D:\StoreApps\$($app.name)"
+}
+
+# ...then in the image build:  .\Install-StoreApp.ps1 -Path D:\StoreApps
+
+# Or report what the image is missing / running behind on
+.\Update-StoreApp.ps1 -PackageName $manifest.apps.storeId -CheckOnly
+
+# Or check + download + provision anything outdated, in one step
+.\Update-StoreApp.ps1 -PackageName $manifest.apps.storeId
+```
+
+Note on new Teams: capturing the MSIX works, but Microsoft's supported VDI route is
+`teamsbootstrapper.exe` and the Teams VDI optimization guidance (the WebRTC/SlimCore
+media plugins ship separately) — keep it in the list only if that fits your stack.
+
 ## Caveats
 
 - **Free apps only.** Paid and line-of-business apps are delivered as encrypted packages
