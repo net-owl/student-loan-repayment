@@ -1,0 +1,112 @@
+# Starting list of popular first-party Microsoft Store apps for offline capture into a
+# VDI master image. Feed the storeId (or packageFamilyName) values to
+# Download-StoreApp.ps1 / Update-StoreApp.ps1. Prune or extend to match your environment.
+#
+# Reading it in PowerShell requires the powershell-yaml module (one-time):
+#   Install-Module powershell-yaml -Scope CurrentUser
+#   $manifest = Get-Content .\first-party-apps.yaml -Raw | ConvertFrom-Yaml
+
+description: >-
+  Starting list of popular first-party Microsoft Store apps for offline capture into a
+  VDI master image.
+
+apps:
+  - name: SnippingTool
+    title: Snipping Tool
+    storeId: 9MZ95KL8MR0L
+    packageFamilyName: Microsoft.ScreenSketch_8wekyb3d8bbwe
+    notes: >-
+      Inbox app on Windows 11 but only updated through the Store; a frequent VDI drift
+      offender.
+
+  - name: ToDo
+    title: Microsoft To Do
+    storeId: 9NBLGGH5R558
+    packageFamilyName: Microsoft.Todos_8wekyb3d8bbwe
+
+  - name: Whiteboard
+    title: Microsoft Whiteboard
+    storeId: 9MSPC6MP8FM4
+    packageFamilyName: Microsoft.Whiteboard_8wekyb3d8bbwe
+
+  - name: CompanyPortal
+    title: Company Portal
+    storeId: 9WZDNCRFJ3PZ
+    packageFamilyName: Microsoft.CompanyPortal_8wekyb3d8bbwe
+    notes: Intune enrollment/self-service portal.
+
+  - name: Notepad
+    title: Windows Notepad
+    storeId: 9MSMLRH6LZF3
+    packageFamilyName: Microsoft.WindowsNotepad_8wekyb3d8bbwe
+    notes: Store-updated inbox app on Windows 11.
+
+  - name: Calculator
+    title: Windows Calculator
+    storeId: 9WZDNCRFHVN5
+    packageFamilyName: Microsoft.WindowsCalculator_8wekyb3d8bbwe
+
+  - name: Paint
+    title: Paint
+    storeId: 9PCFS5B6T72H
+    packageFamilyName: Microsoft.Paint_8wekyb3d8bbwe
+    notes: Store-updated inbox app on Windows 11.
+
+  - name: Photos
+    title: Microsoft Photos
+    storeId: 9WZDNCRFJBH4
+    packageFamilyName: Microsoft.Windows.Photos_8wekyb3d8bbwe
+
+  - name: StickyNotes
+    title: Microsoft Sticky Notes
+    storeId: 9NBLGGH4QGHW
+    packageFamilyName: Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe
+
+  - name: WindowsTerminal
+    title: Windows Terminal
+    storeId: 9N0DX20HK701
+    packageFamilyName: Microsoft.WindowsTerminal_8wekyb3d8bbwe
+
+  - name: Clock
+    title: Windows Clock
+    storeId: 9WZDNCRFJ3PR
+    packageFamilyName: Microsoft.WindowsAlarms_8wekyb3d8bbwe
+    notes: Alarms, timers, focus sessions.
+
+  - name: MediaPlayer
+    title: Windows Media Player
+    storeId: 9WZDNCRFJ3PT
+    packageFamilyName: Microsoft.ZuneMusic_8wekyb3d8bbwe
+    notes: The modern Media Player; identity name is ZuneMusic for historical reasons.
+
+  - name: Camera
+    title: Windows Camera
+    storeId: 9WZDNCRFJBBG
+    packageFamilyName: Microsoft.WindowsCamera_8wekyb3d8bbwe
+
+  - name: AppInstaller
+    title: App Installer (winget)
+    storeId: 9NBLGGH4NNS1
+    packageFamilyName: Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+    notes: Provides winget; keeping it current in the image avoids winget bootstrap issues.
+
+  - name: QuickAssist
+    title: Quick Assist
+    storeId: 9P7BP5VNWKX5
+    packageFamilyName: MicrosoftCorporationII.QuickAssist_8wekyb3d8bbwe
+    notes: Remote-assistance tool; moved from inbox to Store distribution.
+
+  - name: Outlook
+    title: Outlook for Windows (new)
+    storeId: 9NRX63209R7B
+    packageFamilyName: Microsoft.OutlookForWindows_8wekyb3d8bbwe
+    notes: The new MSIX Outlook client.
+
+  - name: Teams
+    title: Microsoft Teams (new)
+    storeId: XP8BT8DW290MPQ
+    packageFamilyName: MSTeams_8wekyb3d8bbwe
+    notes: >-
+      New Teams client. For VDI, Microsoft's supported route is teamsbootstrapper.exe /
+      the Teams VDI guidance; capturing the MSIX here works but check your Teams VDI
+      optimization requirements (WebRTC/SlimCore plugins ship separately).
